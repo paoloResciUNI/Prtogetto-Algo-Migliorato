@@ -1,0 +1,9 @@
+GIUSTIFICAZIONE UTILIZZO STRUTTURE DI BASE (da rivedere)
+
+Ho deciso di utilizzare due slice per rappresentare gli automi e gli ostacoli
+perchè le slice sono strutture semplici da manipolare, utilizzare, sono espandibili (questo per il mio progetto è molto importante)
+e inoltre sono strutture indicizzate, quindi possono essere impiegate, senza troppo sforzo, per l'implementazione di una ricerca dicotomica.
+Il difetto principale è il fatto che ad ogni inserimento quando la slice sarà piena, verrà ricopiato tutto il suo contenuto. Questo è problematico in caso
+di numerosi ostacoli e automi. Tuttavia l'operazione certamente più utilizzata all'interno del programma, soprattutto nella funzione di ricerca del percorso libero, 
+è l'operazione di ricerca.
+Ho deciso quindi di rendere più veloce la ricerca a discapito dell'inserimento. 
