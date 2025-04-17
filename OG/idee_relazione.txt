@@ -7,3 +7,10 @@ Il difetto principale è il fatto che ad ogni inserimento quando la slice sarà 
 di numerosi ostacoli e automi. Tuttavia l'operazione certamente più utilizzata all'interno del programma, soprattutto nella funzione di ricerca del percorso libero, 
 è l'operazione di ricerca.
 Ho deciso quindi di rendere più veloce la ricerca a discapito dell'inserimento. 
+
+
+GIUSTIFICAZIONE FORWARD X E FORWARD Y (non definitiva)
+
+La forward fa eseguire al punto un salto verso la posizione subito precedente del primo ostacolo che incontra sul suo percorso. Dopodichè viene fatto una specie di backtracking 
+che permette al punto di trovarsi in una posizione vantaggiosa per il movimento.
+Va migliorata assolutamente sopratutto per la questione di un iptetico labirinto sul campo (caso peggiore).  
