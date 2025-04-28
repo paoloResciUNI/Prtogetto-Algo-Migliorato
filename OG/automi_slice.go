@@ -290,119 +290,138 @@ func calcolaDistanza(x0, y0, x1, y1 int) int {
 	return int(Distanza)
 }
 
+// Funzione ricorsiva che simula l'avanzamento dell'automa sui suoi assi per raggiungere il segnale 
 func avanza(Campo piano, p *punto, Sorgente *punto) *punto {
-	var distanzaVerticale, distanzaOrizzontale int
-	passi := calcolaDistanza(p.coordinataX, p.coordinataY, Sorgente.coordinataX, Sorgente.coordinataY)
-	if passi <= 0 || p.coordinataX == Sorgente.coordinataX && p.coordinataY == Sorgente.coordinataY {
-		return p
-	}
-	possibilePasso := new(punto)
-	possibilePasso.coordinataX = p.coordinataX
-	possibilePasso.coordinataY = p.coordinataY
-	possibilePasso.id = p.id
-	distanzaOrizzontale, distanzaVerticale = (*Campo).ostacoliPercorso(possibilePasso, Sorgente)
-	if distanzaVerticale < distanzaOrizzontale {
-		possibilePasso = (*Campo).forwardX(possibilePasso, Sorgente)
-	} else if distanzaOrizzontale == distanzaVerticale && p.coordinataX < Sorgente.coordinataX && (*Campo).cercaOstacolo(p.coordinataX+1, p.coordinataY) == nil {
-		possibilePasso.coordinataX++
-	} else if distanzaOrizzontale == distanzaVerticale && p.coordinataX > Sorgente.coordinataX && (*Campo).cercaOstacolo(p.coordinataX-1, p.coordinataY) == nil {
-		possibilePasso.coordinataX--
-	} else if distanzaVerticale > distanzaOrizzontale {
-		possibilePasso = (*Campo).forwardY(possibilePasso, Sorgente)
-	}
-	if p.coordinataX == possibilePasso.coordinataX && p.coordinataY == possibilePasso.coordinataY {
-		return possibilePasso
-	}
-	return avanza(Campo, possibilePasso, Sorgente)
+    passi := calcolaDistanza(p.coordinataX, p.coordinataY, Sorgente.coordinataX, Sorgente.coordinataY)
+    if passi <= 0 || p.coordinataX == Sorgente.coordinataX && p.coordinataY == Sorgente.coordinataY {
+        return p
+    }
+    
+    possibilePasso := new(punto)
+    possibilePasso.coordinataX = p.coordinataX
+    possibilePasso.coordinataY = p.coordinataY
+    possibilePasso.id = p.id
+    
+    // Usa la funzione forward per determinare il prossimo passo
+    possibilePasso = (*Campo).forward(possibilePasso, Sorgente)
+    
+    // Se non è possibile avanzare, ritorna il punto corrente
+    if p.coordinataX == possibilePasso.coordinataX && p.coordinataY == possibilePasso.coordinataY {
+        return possibilePasso
+    }
+    
+    // Altrimenti, continua a cercare il percorso
+    return avanza(Campo, possibilePasso, Sorgente)
 }
 
-func (Campo *Piano) forwardX(start *punto, destination *punto) *punto {
-	var forward punto
-	ostacoloVicino := start.posizioneOstacoloVerticale(Campo, destination.coordinataY)
-	if ostacoloVicino != nil {
-		var puntoE, puntoO int
-		x0, _, x1, _ := estraiCoordinate(ostacoloVicino.id)
-		puntoE = calcolaDistanza(destination.coordinataX, destination.coordinataY, x1, destination.coordinataY)
-		puntoO = calcolaDistanza(destination.coordinataX, destination.coordinataY, x0, destination.coordinataY)
-		if puntoE < puntoO {
-			forward.coordinataX = x1 + 1
-			forward.coordinataY = start.coordinataY
-		} else {
-			forward.coordinataX = x0 - 1
-			forward.coordinataY = start.coordinataY
-		}
-		return &forward
-	}
-	ostacoloVicino = start.posizioneOstacoloOrizzontale(Campo, destination.coordinataX)
-	if ostacoloVicino != nil {
-		x0, _, x1, _ := estraiCoordinate(ostacoloVicino.id)
-		if start.coordinataX < destination.coordinataX {
-			forward.coordinataX = x0 - 1
-		} else if start.coordinataX > destination.coordinataX {
-			forward.coordinataX = x1 + 1
-		}
-	} else {
-		forward.coordinataX = destination.coordinataX
-	}
-	forward.coordinataY = start.coordinataY
-	osostacoloVicino := forward.posizioneOstacoloVerticale(Campo, destination.coordinataX)
-	if osostacoloVicino != nil {
-		var puntoE, puntoO int
-		x0, _, x1, _ := estraiCoordinate(osostacoloVicino.id)
-		puntoE = calcolaDistanza(start.coordinataX, start.coordinataY, x1, start.coordinataY)
-		puntoO = calcolaDistanza(start.coordinataX, start.coordinataY, x0, start.coordinataY)
-		if puntoE < puntoO {
-			forward.coordinataX = x1 + 1
-		} else {
-			forward.coordinataX = x0 - 1
-		}
-	}
-	return &forward
-}
-
-func (Campo *Piano) forwardY(start *punto, destination *punto) *punto {
-	var forward punto
-	ostacoloVicino := start.posizioneOstacoloOrizzontale(Campo, destination.coordinataX)
-	if ostacoloVicino != nil {
-		var puntoN, puntoS int
-		_, y0, _, y1 := estraiCoordinate(ostacoloVicino.id)
-		puntoN = calcolaDistanza(destination.coordinataX, destination.coordinataY, destination.coordinataX, y1)
-		puntoS = calcolaDistanza(destination.coordinataX, destination.coordinataY, destination.coordinataX, y0)
-		if puntoN < puntoS {
-			forward.coordinataY = y1 + 1
-			forward.coordinataX = start.coordinataX
-		} else {
-			forward.coordinataY = y0 - 1
-			forward.coordinataX = start.coordinataX
-		}
-		return &forward
-	}
-	forward.coordinataX = start.coordinataX
-	ostacoloVicino = start.posizioneOstacoloVerticale(Campo, destination.coordinataY)
-	if ostacoloVicino != nil {
-		_, y0, _, y1 := estraiCoordinate(ostacoloVicino.id)
-		if start.coordinataY < destination.coordinataY {
-			forward.coordinataY = y0 - 1
-		} else if start.coordinataY > destination.coordinataY {
-			forward.coordinataY = y1 + 1
-		}
-	} else {
-		forward.coordinataY = destination.coordinataY
-	}
-	ostacoloVicino = forward.posizioneOstacoloOrizzontale(Campo, destination.coordinataX)
-	if ostacoloVicino != nil {
-		var puntoN, puntoS int
-		_, y0, _, y1 := estraiCoordinate(ostacoloVicino.id)
-		puntoN = calcolaDistanza(start.coordinataX, start.coordinataY, start.coordinataX, y1)
-		puntoS = calcolaDistanza(start.coordinataX, start.coordinataY, start.coordinataX, y0)
-		if puntoN < puntoS {
-			forward.coordinataY = y1 + 1
-		} else {
-			forward.coordinataY = y0 - 1
-		}
-		return &forward
-	}
-	return &forward
+func (Campo *Piano) forward(start *punto, destination *punto) *punto {
+    var forward punto
+    forward.coordinataX = start.coordinataX
+    forward.coordinataY = start.coordinataY
+    forward.id = start.id
+    
+    // Determina l'asse principale su cui muoversi (quello con distanza maggiore)
+    distanzaX := int(math.Abs(float64(destination.coordinataX - start.coordinataX)))
+    distanzaY := int(math.Abs(float64(destination.coordinataY - start.coordinataY)))
+    
+    if distanzaX > distanzaY {
+        // Movimento principale lungo asse X
+        ostacoloVicino := start.posizioneOstacoloVerticale(Campo, destination.coordinataX)
+        if ostacoloVicino != nil {
+            x0, _, x1, _ := estraiCoordinate(ostacoloVicino.id)
+            if start.coordinataX < destination.coordinataX {
+                forward.coordinataX = x1 + 1
+            } else if start.coordinataX > destination.coordinataX {
+                forward.coordinataX = x0 - 1
+            }
+        } else {
+            ostacoloVicino := start.posizioneOstacoloOrizzontale(Campo, destination.coordinataX)
+        	if ostacoloVicino != nil {
+            x0, _, x1, _ := estraiCoordinate(ostacoloVicino.id)
+            	if start.coordinataX < destination.coordinataX {
+                forward.coordinataX = x0 - 1
+            	} else if start.coordinataX > destination.coordinataX {
+               		 forward.coordinataX = x1 + 1
+            	}
+			} else {
+				forward.coordinataX = destination.coordinataX
+			}
+        }
+        
+        // Verifica se il nuovo punto ha ostacoli verticali verso la destinazione
+        ostacoloVicino = forward.posizioneOstacoloVerticale(Campo, destination.coordinataY)
+        for ostacoloVicino != nil {
+            // Se c'è un ostacolo, prova a spostarsi lateralmente
+            var puntoE, puntoO int
+            x0, _, x1, _ := estraiCoordinate(ostacoloVicino.id)
+            puntoE = calcolaDistanza(start.coordinataX, start.coordinataY, x1, start.coordinataY)
+            puntoO = calcolaDistanza(start.coordinataX, start.coordinataY, x0, start.coordinataY)
+            if puntoE < puntoO {
+                forward.coordinataX = x1 + 1
+                if forward.coordinataX >= start.coordinataX && start.coordinataX > destination.coordinataX {
+                    return start // Non possiamo fare progressi
+                }
+            } else {
+                forward.coordinataX = x0 - 1
+                if forward.coordinataX <= start.coordinataX && start.coordinataX < destination.coordinataX {
+                    return start // Non possiamo fare progressi
+                }
+            }
+			ostacoloVicino = forward.posizioneOstacoloVerticale(Campo, destination.coordinataY)
+        }
+    } else {
+        // Movimento principale lungo asse Y
+        ostacoloVicino := start.posizioneOstacoloOrizzontale(Campo, destination.coordinataY)
+        if ostacoloVicino != nil {
+            _, y0, _, y1 := estraiCoordinate(ostacoloVicino.id)
+            if start.coordinataY < destination.coordinataY {
+                forward.coordinataY = y1 + 1
+            } else if start.coordinataY > destination.coordinataY {
+                forward.coordinataY = y0 - 1
+            }
+        } else {
+			ostacoloVicino := start.posizioneOstacoloVerticale(Campo, destination.coordinataY)
+			if ostacoloVicino != nil {
+				_, y0, _, y1 := estraiCoordinate(ostacoloVicino.id)
+				if start.coordinataY < destination.coordinataY {
+					forward.coordinataY = y0 - 1
+				} else if start.coordinataY > destination.coordinataY {
+					forward.coordinataY = y1 + 1
+				}
+			} else {
+            	forward.coordinataY = destination.coordinataY
+			}
+        }
+        
+        // Verifica se il nuovo punto ha ostacoli orizzontali verso la destinazione
+        ostacoloVicino = forward.posizioneOstacoloOrizzontale(Campo, destination.coordinataX)
+        for ostacoloVicino != nil {
+            // Se c'è un ostacolo, prova a spostarsi verticalmente
+            var puntoN, puntoS int
+            _, y0, _, y1 := estraiCoordinate(ostacoloVicino.id)
+            puntoN = calcolaDistanza(start.coordinataX, start.coordinataY, start.coordinataX, y1)
+            puntoS = calcolaDistanza(start.coordinataX, start.coordinataY, start.coordinataX, y0)
+            if puntoN < puntoS {
+                forward.coordinataY = y1 + 1
+                if forward.coordinataY >= start.coordinataY && start.coordinataY > destination.coordinataY {
+                    return start // Non possiamo fare progressi
+                }
+            } else {
+                forward.coordinataY = y0 - 1
+                if forward.coordinataY <= start.coordinataY && start.coordinataY < destination.coordinataY {
+                    return start // Non possiamo fare progressi
+                }
+            }
+			ostacoloVicino = forward.posizioneOstacoloOrizzontale(Campo, destination.coordinataX)
+        }
+    }
+    
+    // Verifica che ci sia stato effettivamente un movimento
+    if forward.coordinataX == start.coordinataX && forward.coordinataY == start.coordinataY {
+        return start // Nessun progresso possibile
+    }
+    
+    return &forward
 }
 
 func (Campo *Piano) cercaOstacolo(x int, y int) *punto {

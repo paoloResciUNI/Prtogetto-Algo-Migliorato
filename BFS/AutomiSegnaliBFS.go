@@ -208,13 +208,28 @@ func (Campo *Piano) automa(x, y int, eta string) {
 		coordinataX: x,
 		coordinataY: y,
 		id:          eta,
-		indice:      Campo.automi.fine.indice + 1,
 		successivo:  nil,
-		precendente: Campo.automi.fine,
 	}
 
-	Campo.automi.fine = nuovoAutoma
-}
+	if percorrente != nil && ripercorrente == nil {
+			nuovoAutoma.indice = Campo.automi.inizio.indice + 1
+			nuovoAutoma.precendente = Campo.automi.inizio
+			Campo.automi.fine = nuovoAutoma
+			return
+	} else if percorrente == nil {
+			nuovoAutoma.indice = 1
+			nuovoAutoma.precendente = nil
+			Campo.automi.inizio = nuovoAutoma
+			return
+	}  else {
+			nuovoAutoma.indice = Campo.automi.fine.indice + 1
+			nuovoAutoma.precendente = Campo.automi.fine
+			Campo.automi.fine = nuovoAutoma
+			return
+		}
+	}
+
+
 
 func (Campo *Piano) ostacolo(x0, y0, x1, y1 int) {
 	percorrente := Campo.automi.inizio
@@ -242,11 +257,24 @@ func (Campo *Piano) ostacolo(x0, y0, x1, y1 int) {
 		coordinataX: x0,
 		coordinataY: y1,
 		id:          fmt.Sprintf("%d,%d,%d,%d,ostacolo", x0, y0, x1, y1),
-		indice:      Campo.ostacoli.fine.indice + 1,
-		precendente: Campo.ostacoli.fine,
 	}
 
-	Campo.ostacoli.fine = newOstacolo
+	if percorrente != nil && ripercorrente == nil {
+		newOstacolo.indice = Campo.automi.inizio.indice + 1
+		newOstacolo.precendente = Campo.automi.inizio
+		Campo.automi.fine = newOstacolo
+		return
+} else if percorrente == nil {
+		newOstacolo.indice = 1
+		newOstacolo.precendente = nil
+		Campo.automi.inizio = newOstacolo
+		return
+}  else {
+		newOstacolo.indice = Campo.automi.fine.indice + 1
+		newOstacolo.precendente = Campo.automi.fine
+		Campo.automi.fine = newOstacolo
+		return
+	}
 }
 
 func (Campo *Piano) richiamo(x, y int, alpha string) {

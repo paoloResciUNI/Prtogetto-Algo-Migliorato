@@ -10,11 +10,29 @@ import (
 )
 
 // Struttura per rappresentare un punto nel piano
+/*
+Possibile modifica per la struttura punto:
+	inannzitutto la struttua può avere un puntatora all'elemento precendente
+	inoltre all'interno dell'id si può inserire l'indice di posizione nella lista
+	In questo modo si può operativamente implementare una ricerca dicotomica all'interno della lista
+	Viso che lo scorrimento della lista degli ostacoli e di quella degli autommi è l'operazione che si svolge più di
+	frequente, mi sembra opportuno renderela di costo logaritmico invece che lieare.
+
+	Questo imlica la creazione di due nuove strutture dati per automi e ostacoli, esse terranno un puntato alla coda e alla testa
+	delle rispettive liste.
+*/
 type punto struct {
 	coordinataX int
 	coordinataY int
 	id          string
+	indice      int
 	successivo  *punto
+	precendente *punto
+}
+
+type gruppo struct {
+	inizio *punto
+	fine   *punto
 }
 
 // Tipo piano è un puntatore a Piano
@@ -22,8 +40,8 @@ type piano *Piano
 
 // Struttura che rappresenta il piano con automi e ostacoli
 type Piano struct {
-	automi   *punto
-	ostacoli *punto
+	automi   *gruppo
+	ostacoli *gruppo
 }
 
 // Struttura per una pila
@@ -35,11 +53,7 @@ type elPIla struct {
 
 // Funzione esegui interpreta il comando e chiama la funzione corrispondente
 func esegui(p piano, s string) {
-	comandi := strings.Fields(s) // Usa Fields invece di Split per gestire spazi multipli
-	if len(comandi) == 0 {
-		return
-	}
-
+	comandi := strings.Fields(s)
 	switch comandi[0] {
 	case "c":
 		P := newPiano()
@@ -48,48 +62,31 @@ func esegui(p piano, s string) {
 	case "S":
 		(*p).stampa()
 	case "s":
-		if len(comandi) < 3 {
-			return
-		}
 		a, _ := strconv.Atoi(comandi[1])
 		b, _ := strconv.Atoi(comandi[2])
 		(*p).stato(a, b)
 	case "a":
-		if len(comandi) < 4 {
-			return
-		}
 		a, _ := strconv.Atoi(comandi[1])
 		b, _ := strconv.Atoi(comandi[2])
 		(*p).automa(a, b, comandi[3])
 	case "o":
-		if len(comandi) < 5 {
-			return
-		}
 		a, _ := strconv.Atoi(comandi[1])
 		b, _ := strconv.Atoi(comandi[2])
 		c, _ := strconv.Atoi(comandi[3])
 		d, _ := strconv.Atoi(comandi[4])
 		(*p).ostacolo(a, b, c, d)
 	case "p":
-		if len(comandi) < 2 {
-			return
-		}
 		(*p).posizioni(comandi[1])
 	case "r":
-		if len(comandi) < 4 {
-			return
-		}
 		a, _ := strconv.Atoi(comandi[1])
 		b, _ := strconv.Atoi(comandi[2])
 		(*p).richiamo(a, b, comandi[3])
 	case "e":
-		if len(comandi) < 4 {
-			return
-		}
 		a, _ := strconv.Atoi(comandi[1])
 		b, _ := strconv.Atoi(comandi[2])
 		(*p).esistePercorso(a, b, comandi[3])
 	case "t":
+		fmt.Println("0")
 	case "f":
 		os.Exit(0)
 	}
@@ -106,7 +103,7 @@ func main() {
 
 func (Campo Piano) stampa() {
 	fmt.Println("(")
-	percorrente := Campo.automi
+	percorrente := Campo.automi.inizio
 	for percorrente != nil {
 		fmt.Printf("%s: %d,%d\n", percorrente.id, percorrente.coordinataX, percorrente.coordinataY)
 		percorrente = percorrente.successivo
@@ -114,7 +111,7 @@ func (Campo Piano) stampa() {
 	fmt.Println(")")
 
 	fmt.Println("[")
-	percorrente = Campo.ostacoli
+	percorrente = Campo.ostacoli.inizio
 	for percorrente != nil {
 		x0, y0, x1, y1 := estraiCoordinate(percorrente.id)
 		fmt.Printf("(%d,%d)(%d,%d)\n", x0, y0, x1, y1)
@@ -137,7 +134,7 @@ func (Campo Piano) stato(x, y int) {
 
 func (Campo Piano) posizioni(alpha string) {
 	fmt.Println("(")
-	percorrente := Campo.automi
+	percorrente := Campo.automi.inizio
 	for percorrente != nil {
 		if strings.HasPrefix(percorrente.id, alpha) {
 			fmt.Printf("%s: %d,%d\n", percorrente.id, percorrente.coordinataX, percorrente.coordinataY)
@@ -168,67 +165,97 @@ func (Campo *Piano) esistePercorso(x, y int, eta string) {
 	}
 }
 
-func (Campo *Piano) tortuosita(x, y int, eta string) {
-	if Campo.cercaOstacolo(x, y) != nil {
-		fmt.Println("-1")
-		return
-	}
-
-	automa := Campo.cercaAutoma(-1, -1, eta)
-	if automa == nil {
-		fmt.Println("-1")
-		return
-	}
-
-	distanzaMinima := calcolaDistanza(automa.coordinataX, automa.coordinataY, x, y)
-
-	tortuositaMin := Campo.trovaTortuositaMinima(automa.coordinataX, automa.coordinataY, x, y, distanzaMinima)
-	fmt.Println(tortuositaMin)
-}
-
 func newPiano() piano {
 	var nuovPiano Piano
+	nuovPiano.automi = &gruppo{
+		inizio: nil,
+		fine:   nil,
+	}
+	nuovPiano.ostacoli = &gruppo{
+		inizio: nil,
+		fine:   nil,
+	}
 	return &nuovPiano
 }
 
 func (Campo *Piano) automa(x, y int, eta string) {
-	var prev *punto
-	curr := Campo.automi
-
-	for curr != nil {
-		if curr.id == eta {
-			if prev == nil {
-				Campo.automi = curr.successivo
-			} else {
-				prev.successivo = curr.successivo
-			}
-			break
-		}
-		prev = curr
-		curr = curr.successivo
-	}
+	percorrente := Campo.automi.inizio
+	ripercorrente := Campo.automi.fine
 
 	if Campo.cercaOstacolo(x, y) != nil {
 		return
+	}
+
+	if Campo.cercaAutoma(x, y, "") != nil {
+		return
+	}
+
+	// Algoritmo per una ricerca dicotomica
+	for percorrente != nil && ripercorrente != nil {
+		if percorrente.id == eta {
+			percorrente.coordinataX = x
+			percorrente.coordinataY = y
+			return
+		}
+
+		if ripercorrente.id == eta {
+			ripercorrente.coordinataX = x
+			ripercorrente.coordinataY = y
+			return
+		}
+
+		if ripercorrente.indice < percorrente.indice {
+			break
+		}
+
+		percorrente = percorrente.successivo
+		ripercorrente = ripercorrente.precendente
 	}
 
 	nuovoAutoma := &punto{
 		coordinataX: x,
 		coordinataY: y,
 		id:          eta,
-		successivo:  Campo.automi,
 	}
 
-	Campo.automi = nuovoAutoma
+	if Campo.automi.inizio != nil && Campo.automi.fine == nil {
+		nuovoAutoma.indice = Campo.automi.inizio.indice + 1
+		nuovoAutoma.precendente = Campo.automi.inizio
+		Campo.automi.fine = nuovoAutoma
+		Campo.automi.inizio.successivo = nuovoAutoma
+		return
+	} else if Campo.automi.inizio == nil && Campo.ostacoli.fine == nil {
+		nuovoAutoma.indice = 1
+		nuovoAutoma.precendente = nil
+		Campo.automi.inizio = nuovoAutoma
+		return
+	} else {
+		nuovoAutoma.indice = Campo.automi.fine.indice + 1
+		nuovoAutoma.precendente = Campo.automi.fine
+		Campo.automi.fine = nuovoAutoma
+		return
+	}
 }
 
 func (Campo *Piano) ostacolo(x0, y0, x1, y1 int) {
-	percorrente := Campo.automi
-	for percorrente != nil {
+	percorrente := Campo.ostacoli.inizio
+	ripercorrente := Campo.ostacoli.fine
+
+	// Ricerca dicotomica
+	for percorrente != nil && ripercorrente != nil {
 		if percorrente.coordinataX >= x0 && percorrente.coordinataX <= x1 &&
 			percorrente.coordinataY >= y0 && percorrente.coordinataY <= y1 {
 			return
 		}
+
+		if ripercorrente.coordinataX >= x0 && ripercorrente.coordinataX <= x1 &&
+			ripercorrente.coordinataY >= y0 && ripercorrente.coordinataY <= y1 {
+			return
+		}
+		if ripercorrente.indice < percorrente.indice {
+			break
+		}
+		ripercorrente = ripercorrente.precendente
 		percorrente = percorrente.successivo
 	}
 
@@ -236,10 +263,24 @@ func (Campo *Piano) ostacolo(x0, y0, x1, y1 int) {
 		coordinataX: x0,
 		coordinataY: y1,
 		id:          fmt.Sprintf("%d,%d,%d,%d,ostacolo", x0, y0, x1, y1),
-		successivo:  Campo.ostacoli,
 	}
 
-	Campo.ostacoli = newOstacolo
+	if Campo.ostacoli.inizio != nil && Campo.ostacoli.fine == nil {
+		newOstacolo.indice = Campo.ostacoli.inizio.indice + 1
+		newOstacolo.precendente = Campo.ostacoli.inizio
+		Campo.ostacoli.fine = newOstacolo
+		Campo.ostacoli.inizio.successivo = newOstacolo
+		return
+	} else if Campo.ostacoli.inizio == nil {
+		newOstacolo.indice = 1
+		Campo.ostacoli.inizio = newOstacolo
+		return
+	} else {
+		newOstacolo.indice = Campo.ostacoli.fine.indice + 1
+		newOstacolo.precendente = Campo.ostacoli.fine
+		Campo.ostacoli.fine = newOstacolo
+		return
+	}
 }
 
 func (Campo *Piano) richiamo(x, y int, alpha string) {
@@ -248,7 +289,7 @@ func (Campo *Piano) richiamo(x, y int, alpha string) {
 	}
 
 	var automiChiamati []*punto
-	percorrente := Campo.automi
+	percorrente := Campo.automi.inizio
 
 	for percorrente != nil {
 		if strings.HasPrefix(percorrente.id, alpha) {
@@ -353,114 +394,6 @@ func (Campo *Piano) trovaPercorsoMinimo(x0, y0, x1, y1, distanzaMinima int) bool
 	return false
 }
 
-func (Campo *Piano) trovaTortuositaMinima(x0, y0, x1, y1, distanzaMinima int) int {
-	// Verifica prima se esiste un percorso valido
-	if !Campo.trovaPercorsoMinimo(x0, y0, x1, y1, distanzaMinima) {
-		return -1
-	}
-
-	// Definizione della struttura per la BFS
-	type Nodo struct {
-		x, y      int
-		passi     int
-		curve     int
-		direzione int // 0=nessuna, 1=orizzontale, 2=verticale
-		next      *Nodo
-	}
-
-	// Struttura per memorizzare lo stato di una visita
-	type StatoVisita struct {
-		curve     int
-		direzione int
-	}
-
-	// Mappa delle visite (chiave: "x,y,direzione")
-	visite := make(map[string]StatoVisita)
-
-	// Direzioni possibili: destra, sinistra, su, giù
-	dx := []int{1, -1, 0, 0}
-	dy := []int{0, 0, 1, -1}
-	// Tipo di direzione: 1=orizzontale, 2=verticale
-	tipiDirezione := []int{1, 1, 2, 2}
-
-	// Inizializza la coda con il punto di partenza
-	coda := Nodo{
-		x:         x0,
-		y:         y0,
-		passi:     0,
-		curve:     0,
-		direzione: 0,
-	}
-
-	tortuositaMinima := math.MaxInt32
-
-	// BFS che tiene traccia della tortuosità
-	nodoCorrente := &coda
-	for nodoCorrente != nil {
-		x := nodoCorrente.x
-		y := nodoCorrente.y
-		passi := nodoCorrente.passi
-		curve := nodoCorrente.curve
-		dirAttuale := nodoCorrente.direzione
-
-		// Destinazione raggiunta con distanza minima?
-		if x == x1 && y == y1 && passi == distanzaMinima {
-			if curve < tortuositaMinima {
-				tortuositaMinima = curve
-			}
-		}
-
-		// Se abbiamo superato la distanza minima, passa al prossimo nodo
-		if passi >= distanzaMinima {
-			nodoCorrente = nodoCorrente.next
-			continue
-		}
-
-		// Controlla se abbiamo già visitato questo stato con meno curve
-		chiave := fmt.Sprintf("%d,%d,%d", x, y, dirAttuale)
-		if stato, trovato := visite[chiave]; trovato && stato.curve <= curve {
-			nodoCorrente = nodoCorrente.next
-			continue
-		}
-
-		// Aggiorna lo stato della visita
-		visite[chiave] = StatoVisita{curve: curve, direzione: dirAttuale}
-
-		// Esplora tutte le direzioni possibili
-		for i := 0; i < 4; i++ {
-			nx := x + dx[i]
-			ny := y + dy[i]
-
-			// Se la posizione è valida (non è un ostacolo)
-			if Campo.cercaOstacolo(nx, ny) == nil {
-				nuoveCurve := curve
-
-				// Incrementa le curve se cambiamo direzione (e non è la prima mossa)
-				if dirAttuale != 0 && dirAttuale != tipiDirezione[i] {
-					nuoveCurve++
-				}
-
-				// Aggiungi il nuovo nodo alla coda
-				nuovoNodo := &Nodo{
-					x:         nx,
-					y:         ny,
-					passi:     passi + 1,
-					curve:     nuoveCurve,
-					direzione: tipiDirezione[i],
-					next:      nodoCorrente.next,
-				}
-				nodoCorrente.next = nuovoNodo
-			}
-		}
-		nodoCorrente = nodoCorrente.next
-	}
-
-	if tortuositaMinima == math.MaxInt32 {
-		return -1
-	}
-	return tortuositaMinima
-}
-
 func estraiCoordinate(id string) (x0 int, y0 int, x1 int, y1 int) {
 	coordinate, _ := strings.CutSuffix(id, "ostacolo")
 	slCoordinate := strings.Split(coordinate, ",")
@@ -476,25 +409,62 @@ func calcolaDistanza(x0, y0, x1, y1 int) int {
 }
 
 func (Campo *Piano) cercaOstacolo(x int, y int) *punto {
-	percorrente := Campo.ostacoli
-	for percorrente != nil {
+	percorrente := Campo.ostacoli.inizio
+	ripercorrente := Campo.ostacoli.fine
+
+	for percorrente != nil && ripercorrente != nil {
 		x0, y0, x1, y1 := estraiCoordinate(percorrente.id)
 		if x >= x0 && x <= x1 && y >= y0 && y <= y1 {
 			return percorrente
 		}
+
+		x0, y0, x1, y1 = estraiCoordinate(ripercorrente.id)
+		if x >= x0 && x <= x1 && y >= y0 && y <= y1 {
+			return ripercorrente
+		}
+
+		if ripercorrente.indice < percorrente.indice {
+			break
+		}
+		ripercorrente = ripercorrente.precendente
 		percorrente = percorrente.successivo
+	}
+
+	if percorrente != nil {
+		x0, y0, x1, y1 := estraiCoordinate(percorrente.id)
+		if x >= x0 && x <= x1 && y >= y0 && y <= y1 {
+			return percorrente
+		}
 	}
 	return nil
 }
 
 func (Campo *Piano) cercaAutoma(x, y int, id string) *punto {
-	percorrente := Campo.automi
-	for percorrente != nil {
+	percorrente := Campo.automi.inizio
+	ripercorrente := Campo.automi.fine
+
+	for percorrente != nil && ripercorrente != nil {
 		if (percorrente.coordinataX == x && percorrente.coordinataY == y) ||
 			(id != "" && percorrente.id == id) {
 			return percorrente
 		}
+
+		if (ripercorrente.coordinataX == x && ripercorrente.coordinataY == y) ||
+			(id != "" && ripercorrente.id == id) {
+			return ripercorrente
+		}
+
+		if ripercorrente.indice < percorrente.indice {
+			break
+		}
+
 		percorrente = percorrente.successivo
+		ripercorrente = ripercorrente.precendente
 	}
+
+	if percorrente != nil && ((percorrente.coordinataX == x && percorrente.coordinataY == y) || percorrente.id == id) {
+		return percorrente
+	}
+
 	return nil
 }
